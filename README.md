@@ -30,10 +30,10 @@ loss.backward()
 With DINO support:
 
 ```python
-from DINO_Wrapper import DinoWrapper
+from DINO_Wrapper import DINOWrapper
 
 model, images = ...
-dino_model = DinoWrapper(model)  # DINOv1 by default
+dino_model = DINOWrapper(model)  # DINOv1 by default
 original_output, dino_loss = dino_model(images)
 loss = criterion(original_output) + dino_loss
 loss.backward()
@@ -44,9 +44,9 @@ Note that we expect the `original_output` is in the shape of `[B, D]`, where `B`
 ## Custome Configurations Supported
 
 ```python
-from DINO_Wrapper import DinoWrapper, DinoConf
+from DINO_Wrapper import DINOWrapper, DINOConf
 
-dino_cfgs = DinoConf(
+dino_cfgs = DINOConf(
     version='v2',
     local_crops_number = 2,
     global_crops_scale = (0.9, 1.), 
@@ -58,7 +58,7 @@ dino_cfgs = DinoConf(
 )
 
 model, images = ...
-dino_model = DinoWrapper(model, dino_cfgs)  # using DINOv2 now
+dino_model = DINOWrapper(model, dino_cfgs)  # using DINOv2 now
 original_output, dino_loss = dino_model(images)
 loss = criterion(original_output) + dino_loss
 loss.backward()

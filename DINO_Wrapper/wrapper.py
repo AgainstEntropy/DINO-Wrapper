@@ -1,33 +1,33 @@
-from typing import Optional, Callable, Union
-from omegaconf import OmegaConf
+from typing import Optional
 from copy import deepcopy
 
 import torch
 from torch import nn
 
-from .configs import DinoConf
+from .configs import DINOConf
+from .loss import DINOLossV1
+from .data import DINOAugV1
 
 
-class DinoWrapper(nn.Module):
+class DINOWrapper(nn.Module):
     def __init__(self, 
                  model: nn.Module,
-                #  configs: Optional[Union[OmegaConf, dict]] = None,
-                 configs: Optional[DinoConf] = None,
+                 configs: Optional[DINOConf] = None,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
 
-        self.cfgs = configs if configs is not None else DinoConf()
+        self.cfgs = configs if configs is not None else DINOConf()
         self.preprocess_func = configs.preprocess_func
 
         self.teacher, self.student = None, None
         self.prepare_model(model)
 
         self.augmentation = None
-        self.prepare_aug(configs)
+        self.prepare_aug()
 
         self.dino_loss = None
-        self.prepare_loss(configs)
+        self.prepare_loss()
 
 
         raise NotImplementedError
@@ -57,6 +57,7 @@ class DinoWrapper(nn.Module):
             features, pos = self.student(student_images[:, i])
             student_features.append(features[0])
         student_features = torch.stack(student_features, dim=0)  # (8, BS, C, H, W)
+        feature = student_features.mean(dim=0)
         
         raise NotImplementedError
 
@@ -76,11 +77,27 @@ class DinoWrapper(nn.Module):
         for p in self.teacher.parameters():
             p.requires_grad = False
     
-    def prepare_aug(self, cfgs: OmegaConf):
+    def prepare_aug(self):
+        if self.cfgs.version == 'v1':
+            self.augmentation = DINOAugV1(
+                self.cfgs.global_crops_scale, 
+                self.cfgs.local_crops_scale, 
+                self.cfgs.local_crops_number
+            )
         raise NotImplementedError
     
-    def prepare_loss(self, model: nn.Module):
-        raise NotImplementedError
+    def prepare_loss(self):
+        if self.cfgs.version == 'v1':
+            self.dino_loss = DINOLossV1(
+                self.cfgs.out_dim,
+                self.cfgs.local_crops_number + 2,  # total number of crops = 2 global crops + local_crops_number
+                self.cfgs.warmup_teacher_temp,
+                self.cfgs.teacher_temp,
+                self.cfgs.warmup_teacher_temp_epochs,
+                self.cfgs.epochs,
+            )
+        elif self.cfgs.version == 'v2':
+            raise NotImplementedError
 
     def preprocess(self, input):
         return self.preprocess_func(input)
