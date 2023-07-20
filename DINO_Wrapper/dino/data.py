@@ -8,11 +8,15 @@ https://github.com/facebookresearch/detr/blob/master/util/misc.py
 from PIL import Image
 from torchvision import transforms
 
-import utils
+from . import utils
+from ..dinov2.data.transforms import MaybeToTensor
 
 
 class DataAugmentationDINO(object):
-    def __init__(self, global_crops_scale, local_crops_scale, local_crops_number):
+    def __init__(self, 
+                 global_crops_scale, 
+                 local_crops_scale, 
+                 local_crops_number):
         flip_and_color_jitter = transforms.Compose([
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomApply(
@@ -22,9 +26,10 @@ class DataAugmentationDINO(object):
             transforms.RandomGrayscale(p=0.2),
         ])
         normalize = transforms.Compose([
-            transforms.ToTensor(),
+            MaybeToTensor(),
             transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
         ])
+        self.normalize = normalize
 
         # first global crop
         self.global_transfo1 = transforms.Compose([
