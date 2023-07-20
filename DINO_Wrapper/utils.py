@@ -1,4 +1,5 @@
 from PIL import Image
+from torchvision import transforms
 
 from .dino.utils import cosine_scheduler
 
