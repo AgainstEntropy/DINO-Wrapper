@@ -3,6 +3,8 @@ import yaml
 
 
 SHARED_DEFAULT_CONFIGS = {
+    # Model
+    'out_dim': None,
     # Multi-crop parameters
     'global_crops_number': 2,
     'global_crop_size': 224,
@@ -10,6 +12,9 @@ SHARED_DEFAULT_CONFIGS = {
     'local_crop_size': 96,
     # Temperature teacher parameters
     'warmup_teacher_temp': 0.04,
+    # Train
+    'len_train_loader': None,
+    'epochs': 100,
     # Others
     'preprocess_func': None,
 }
@@ -23,6 +28,7 @@ V1_DEFAULT_CONFIGS = {
     'momentum_teacher': 0.996,
     # Temperature teacher parameters
     'teacher_temp': 0.04,
+    'warmup_teacher_temp_epochs': 0,
 }
 
 V2_DEFAULT_CONFIGS = {
@@ -63,9 +69,7 @@ class DINOConf:
             setattr(self, k, new_configs.pop(k))
 
         if len(new_configs) != 0:
-            print(f"""
-                    The following unknown configurations are not used:\n
-                    {list(new_configs.keys())}\n
-                    Please remove them next time.\n
-                  """)
+            print(f"The following unknown configurations are not used:\n"
+                   "{list(new_configs.keys())}\n"
+                   "Please remove them next time.\n")
             
