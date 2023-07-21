@@ -25,6 +25,7 @@ model, images = ...
 original_output = model(images)
 loss = criterion(original_output)
 loss.backward()
+...
 ```
 
 With DINO support:
@@ -37,6 +38,7 @@ dino_model = DINOWrapper(model)  # DINOv1 by default
 original_output, dino_loss = dino_model(images)
 loss = criterion(original_output) + dino_loss
 loss.backward()
+...
 ```
 
 Note that we expect the `original_output` is in the shape of `[B, D]`, where `B` is the batch size and `D` is the dimension of feature vectors, so that we can directly compute the DINO loss on the `original_output` by default.
@@ -55,6 +57,7 @@ dino_cfgs = DINOConf(
     local_crops_scale = (0.6, 0.7), 
     local_crop_size = (240, 320),
     preprocess_func = ...,
+    len_train_loader = len(train_loader),
 )
 
 model, images = ...
@@ -62,6 +65,7 @@ dino_model = DINOWrapper(model, dino_cfgs)  # using DINOv2 now
 original_output, dino_loss = dino_model(images)
 loss = criterion(original_output) + dino_loss
 loss.backward()
+...
 ```
 
 ## Citations
