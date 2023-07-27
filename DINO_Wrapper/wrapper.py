@@ -3,6 +3,7 @@ from copy import deepcopy
 
 import torch
 from torch import nn, Tensor
+from torchvision.models.feature_extraction import create_feature_extractor
 
 from .configs import DINOConf
 from .loss import DINOLossV1
@@ -45,9 +46,6 @@ class DINOWrapper(nn.Module):
 
         forward_feature, dino_features = self.dino_forward(aug_dict_list)
 
-        teacher_features = self.preprocess_feature(teacher_features)
-        student_features = self.preprocess_feature(student_features)
-
         return forward_feature, self.dino_loss(*dino_features, epoch)
     
     def dino_forward(self, aug_dict_list: Sequence[dict]):
@@ -66,14 +64,16 @@ class DINOWrapper(nn.Module):
         student_features = []  # (2+8) * (BS, C, H, W)
         # only global crops pass through the teacher
         for g_crop in global_crops:
-            features = self.teacher(g_crop)
-            teacher_features.append(features)
+            t_features = self.teacher(g_crop)
+            t_features = self.preprocess_feature(t_features)
+            teacher_features.append(t_features)
         teacher_features = torch.stack(teacher_features, dim=0)  # (2, BS, C [, H, W])
         
         # all crops pass through the student 
         for crop in global_crops + local_crops:
-            features = self.student(crop)
-            student_features.append(features)
+            s_features = self.student(crop)
+            s_features = self.preprocess_feature(s_features)
+            student_features.append(s_features)
         student_features = torch.stack(student_features, dim=0)  # (2+8, BS, C [, H, W])
         
         forward_feature = student_features[:global_num].mean(dim=0)
@@ -82,7 +82,9 @@ class DINOWrapper(nn.Module):
 
     def infer_forward(self, input):
         with torch.inference_mode():
-            return self.teacher(self.augmentation.normalize(input))
+            x = self.augmentation.normalize(input)
+            t_features = self.teacher(x)
+            return self.preprocess_feature(t_features)
     
     def ema_update(self, it:int):
         # EMA update for the teacher
@@ -95,8 +97,14 @@ class DINOWrapper(nn.Module):
         setattr(self.cfgs, 'out_dim', model.fc.in_features)
         model.fc = nn.Identity()
 
-        self.student = model
-        self.teacher = deepcopy(model)
+        if self.cfgs.return_layer is None:
+            self.student = model
+        else:
+            self.student = create_feature_extractor(
+                model, 
+                return_nodes=[self.cfgs.return_layer]
+            )
+        self.teacher = deepcopy(self.student)
         # teacher and student start with the same weights
         self.teacher.load_state_dict(self.student.state_dict())
         # there is no backpropagation through the teacher, so no need for gradients
@@ -146,5 +154,7 @@ class DINOWrapper(nn.Module):
 
 
     def preprocess_feature(self, input):
+        if self.cfgs.return_layer is not None:
+            input = input[self.cfgs.return_layer]
         return self.preprocess_func(input)
     

@@ -12,9 +12,10 @@ if __name__ == '__main__':
         local_crops_number = 8,
         local_crops_scale = (0.9, 1.), 
         local_crop_size = (480, 640),
-        preprocess_func = lambda x:x,
+        preprocess_func = lambda x:x.mean(dim=(-1, -2)),
         len_train_loader = 20,
         epochs = 20,
+        return_layer='layer4'
     )
 
     model = torchvision.models.resnet18()

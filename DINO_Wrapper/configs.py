@@ -17,6 +17,8 @@ SHARED_DEFAULT_CONFIGS = {
     'epochs': 100,
     # Others
     'preprocess_func': None,
+    # Use-Lyaers
+    'return_layer': None,
 }
 
 V1_DEFAULT_CONFIGS = {
