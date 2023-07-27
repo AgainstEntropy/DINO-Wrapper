@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Sequence
 from copy import deepcopy
 
 import torch
@@ -40,29 +40,45 @@ class DINOWrapper(nn.Module):
             raise NotImplementedError
     
     def train_forward(self, input: Tensor, epoch: int):
-        batch_size = input.shape[0]
         input_pil = [self.preprocess_data(pic) for pic in input]
-        aug_crops = [self.augmentation(pil) for pil in input_pil]
-        aug_crops = [torch.stack([aug_crops[b][n] for b in range(batch_size)]) \
-                     for n in range(self.dino_loss.ncrops)]
+        aug_dict_list: list[dict[str, list]] = [self.augmentation(pil) for pil in input_pil]
 
-        teacher_features = []  # 2 * (BS, C, H, W)
-        student_features = []  # (2+8) * (BS, C, H, W)
-        for g_crop in aug_crops[:2]:
-            features = self.teacher(g_crop)
-            teacher_features.append(features)
-        teacher_features = torch.stack(teacher_features, dim=0)  # (2, BS, C [, H, W])
-        
-        for crop in aug_crops:
-            features = self.student(crop)
-            student_features.append(features)
-        student_features = torch.stack(student_features, dim=0)  # (2+8, BS, C [, H, W])
-        forward_feature = student_features[:2].mean(dim=0)
+        forward_feature, dino_features = self.dino_forward(aug_dict_list)
 
         teacher_features = self.preprocess_feature(teacher_features)
         student_features = self.preprocess_feature(student_features)
 
-        return forward_feature, self.dino_loss(student_features, teacher_features, epoch)
+        return forward_feature, self.dino_loss(*dino_features, epoch)
+    
+    def dino_forward(self, aug_dict_list: Sequence[dict]):
+        batch_size = len(aug_dict_list)
+        global_num = len(aug_dict_list[0]['global_crops']) # 2 * (C, H, W)
+        local_num = len(aug_dict_list[0]['local_crops']) # (2+8) * (C, H, W)
+
+        global_crops = [torch.stack([aug_dict_list[b]['global_crops'][n] \
+                                     for b in range(batch_size)]) \
+                        for n in range(global_num)]
+        local_crops = [torch.stack([aug_dict_list[b]['local_crops'][n] \
+                                     for b in range(batch_size)]) \
+                        for n in range(local_num)]
+
+        teacher_features = []  # 2 * (BS, C, H, W)
+        student_features = []  # (2+8) * (BS, C, H, W)
+        # only global crops pass through the teacher
+        for g_crop in global_crops:
+            features = self.teacher(g_crop)
+            teacher_features.append(features)
+        teacher_features = torch.stack(teacher_features, dim=0)  # (2, BS, C [, H, W])
+        
+        # all crops pass through the student 
+        for crop in global_crops + local_crops:
+            features = self.student(crop)
+            student_features.append(features)
+        student_features = torch.stack(student_features, dim=0)  # (2+8, BS, C [, H, W])
+        
+        forward_feature = student_features[:global_num].mean(dim=0)
+
+        return forward_feature, (student_features, teacher_features)
 
     def infer_forward(self, input):
         with torch.inference_mode():

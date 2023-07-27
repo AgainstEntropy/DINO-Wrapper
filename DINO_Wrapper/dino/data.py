@@ -56,9 +56,16 @@ class DataAugmentationDINO(object):
         ])
 
     def __call__(self, image):
-        crops = []
-        crops.append(self.global_transfo1(image))
-        crops.append(self.global_transfo2(image))
-        for _ in range(self.local_crops_number):
-            crops.append(self.local_transfo(image))
-        return crops
+        output = {}
+        # global
+        global_crop_1 = self.global_transfo1(image)
+        global_crop_2 = self.global_transfo2(image)
+        output["global_crops"] = [global_crop_1, global_crop_2]
+
+        # local
+        local_crops = [
+            self.local_transfo(image) for _ in range(self.local_crops_number)
+        ]
+        output["local_crops"] = local_crops
+        
+        return output

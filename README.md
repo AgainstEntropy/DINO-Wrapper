@@ -16,6 +16,12 @@ DINO v2:
 [[`Blog`](https://ai.facebook.com/blog/dino-v2-computer-vision-self-supervised-learning/)] 
 [[`Paper`](https://arxiv.org/abs/2304.07193)] 
 
+## Coming Updates
+
+- [ ] Use intermediate feature for computing dino loss
+
+- [ ] Cosider use EMA implementation from [timm](https://github.com/huggingface/pytorch-image-models/blob/main/timm/utils/model_ema.py), [MS](https://github.com/microsoft/unilm/blob/master/edgelm/fairseq/models/ema/ema.py), or [ema-pytorch](https://github.com/lucidrains/ema-pytorch).
+
 ## Usage
 
 Without DINO support:
