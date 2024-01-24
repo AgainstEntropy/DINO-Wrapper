@@ -36,13 +36,15 @@ loss.backward()
 
 With DINO support:
 
-```python
-from DINO_Wrapper import DINOWrapper
+```diff
++ from DINO_Wrapper import DINOWrapper
 
 model, images = ...
-dino_model = DINOWrapper(model)  # DINOv1 by default
-original_output, dino_loss = dino_model(images)
-loss = criterion(original_output) + dino_loss
++ dino_model = DINOWrapper(model)  # DINOv1 by default
+- original_output = model(images)
+- loss = criterion(original_output)
++ original_output, dino_loss = dino_model(images)
++ loss = criterion(original_output) + dino_loss
 loss.backward()
 ...
 ```
